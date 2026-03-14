@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geo-Fence Simulator | Livestock Monitoring</title>
+
+    <!-- Google Fonts: Inter for UI, Roboto Mono for coordinates -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <!-- Leaflet Control Geocoder CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- Main Application Container -->
+    <div class="app-container">
+
+        <!-- Sidebar / Control Panel -->
+        <aside class="sidebar glass-panel">
+            <header class="sidebar-header">
+                <h1><i class="fa-solid fa-cow"></i> Geo-Fence Sim</h1>
+                <p>Livestock Monitoring System</p>
+            </header>
+
+            <!-- Status Indicator -->
+            <div class="status-card unknown" id="status-indicator">
+                <div class="status-icon"><i class="fa-solid fa-circle-question"></i></div>
+                <div class="status-text">
+                    <span class="label">Status</span>
+                    <span class="value" id="status-text">No Fence</span>
+                </div>
+            </div>
+
+            <!-- Fence Controls -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-draw-polygon"></i> Fence Controls</h3>
+                <div class="button-grid">
+                    <button id="btn-draw-poly" class="btn btn-secondary" title="Draw Polygon"><i
+                            class="fa-solid fa-shapes"></i> Draw Poly</button>
+                    <button id="btn-draw-circle" class="btn btn-secondary" title="Draw Circle"><i
+                            class="fa-regular fa-circle"></i> Draw Circle</button>
+                    <button id="btn-clear-fence" class="btn btn-danger" title="Clear Fence"><i
+                            class="fa-solid fa-trash"></i> Clear</button>
+                </div>
+                <div class="button-grid mt-2">
+                    <button id="btn-export" class="btn btn-outline"><i class="fa-solid fa-download"></i> Export
+                        GeoJSON</button>
+                    <button id="btn-export-esp32" class="btn btn-primary" title="Export for ESP32 Firmware"><i
+                            class="fa-solid fa-microchip"></i> Export ESP32</button>
+                    <button id="btn-import" class="btn btn-outline"><i class="fa-solid fa-upload"></i> Import</button>
+                    <input type="file" id="file-import" accept=".json" style="display: none;">
+                </div>
+
+                <!-- ESP32 Output Area (Hidden by default) -->
+                <div id="esp32-output-container" class="mt-2 hidden" style="display: none;">
+                    <label style="font-size: 0.8rem; color: #64748b;">ESP32 Config (Copy/Paste):</label>
+                    <textarea id="esp32-json-output" rows="5" readonly
+                        style="width: 100%; font-family: monospace; font-size: 0.75rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; resize: vertical;"></textarea>
+                    <button id="btn-copy-esp32" class="btn btn-secondary btn-sm"
+                        style="width: 100%; margin-top: 5px;"><i class="fa-regular fa-copy"></i> Copy to
+                        Clipboard</button>
+                    <p style="font-size: 0.7rem; color: #64748b; margin-top: 5px; font-style: italic;">
+                        This format is optimized for ESP32 firmware. Copy-paste directly into fenceJson.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Simulation Controls -->
+            <div class="control-group">
+                <h3><i class="fa-solid fa-gamepad"></i> Simulation</h3>
+
+                <div class="toggle-switch">
+                    <label for="toggle-auto-walk">Auto-Walk (Random)</label>
+                    <input type="checkbox" id="toggle-auto-walk">
+                </div>
+
+                <div class="toggle-switch mt-2">
+                    <label for="toggle-live-gps">Live GPS Tracking</label>
+                    <input type="checkbox" id="toggle-live-gps">
+                </div>
+
+                <!-- Coordinate Display -->
+                <div class="coord-display">
+                    <div class="coord-row">
+                        <span>Lat:</span>
+                        <span id="cow-lat" class="mono">--.----</span>
+                    </div>
+                    <div class="coord-row">
+                        <span>Lng:</span>
+                        <span id="cow-lng" class="mono">--.----</span>
+                    </div>
+                </div>
+                <button id="btn-reset-cow" class="btn btn-primary mt-2"><i class="fa-solid fa-location-crosshairs"></i>
+                    Reset Position</button>
+            </div>
+
+            <!-- Instructions (Collapsible or just small text) -->
+            <div class="instructions">
+                <p><small><i class="fa-solid fa-circle-info"></i> Draw a fence on the map. Drag the cow marker to
+                        simulate movement.</small></p>
+            </div>
+        </aside>
+
+        <!-- Map Container -->
+        <main class="map-wrapper">
+            <div id="map"></div>
+
+            <!-- Alert Overlay (Hidden by default) -->
+            <div id="alert-banner" class="alert-banner hidden">
+                <i class="fa-solid fa-triangle-exclamation fa-beat"></i> WARNING: OUTSIDE GEO-FENCE
+            </div>
+        </main>
+
+    </div>
+
+    <!-- Audio Elements -->
+    <audio id="audio-alert" src="assets/alert.mp3" preload="auto" loop></audio>
+
+    <!-- Scripts -->
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+    <!-- App Modules -->
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>
