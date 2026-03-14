@@ -63,24 +63,34 @@
                             class="fa-solid fa-trash"></i> Clear</button>
                 </div>
                 <div class="button-grid mt-2">
-                    <button id="btn-export" class="btn btn-outline"><i class="fa-solid fa-download"></i> Export
-                        GeoJSON</button>
-                    <button id="btn-export-esp32" class="btn btn-primary" title="Export for ESP32 Firmware"><i
-                            class="fa-solid fa-microchip"></i> Export ESP32</button>
+                    <button id="btn-export" class="btn btn-outline" title="Export GeoJSON"><i
+                            class="fa-solid fa-file-code"></i> GeoJSON</button>
+                    <button id="btn-sync-api" class="btn btn-success" title="Sync Fence to ESP32 API"><i
+                            class="fa-solid fa-cloud-arrow-up"></i> Sync to Cloud</button>
+                    <button id="btn-export-firmware" class="btn btn-primary"
+                        title="Export for ESP32 Firmware (C++ Format)"><i class="fa-solid fa-microchip"></i> Export
+                        Firmware</button>
                     <button id="btn-import" class="btn btn-outline"><i class="fa-solid fa-upload"></i> Import</button>
                     <input type="file" id="file-import" accept=".json" style="display: none;">
                 </div>
 
+                <!-- Sync Status Display -->
+                <div id="sync-status" class="mt-1 hidden"
+                    style="font-size: 0.75rem; text-align: center; padding: 4px; border-radius: 4px;">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i> Syncing...
+                </div>
+
                 <!-- ESP32 Output Area (Hidden by default) -->
                 <div id="esp32-output-container" class="mt-2 hidden" style="display: none;">
-                    <label style="font-size: 0.8rem; color: #64748b;">ESP32 Config (Copy/Paste):</label>
-                    <textarea id="esp32-json-output" rows="5" readonly
-                        style="width: 100%; font-family: monospace; font-size: 0.75rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; resize: vertical;"></textarea>
+                    <label id="esp32-output-label" style="font-size: 0.8rem; color: #64748b;">ESP32 Config
+                        (Copy/Paste):</label>
+                    <textarea id="esp32-json-output" rows="8" readonly
+                        style="width: 100%; font-family: 'Roboto Mono', monospace; font-size: 0.75rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; resize: vertical;"></textarea>
                     <button id="btn-copy-esp32" class="btn btn-secondary btn-sm"
                         style="width: 100%; margin-top: 5px;"><i class="fa-regular fa-copy"></i> Copy to
                         Clipboard</button>
                     <p style="font-size: 0.7rem; color: #64748b; margin-top: 5px; font-style: italic;">
-                        This format is optimized for ESP32 firmware. Copy-paste directly into fenceJson.
+                        This format is optimized for ESP32. Use "Sync" for WiFi or "Export" for manual C++ code.
                     </p>
                 </div>
             </div>

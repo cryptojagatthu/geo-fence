@@ -83,33 +83,50 @@ export function exportFenceToESP32(layerGroup) {
         return null;
     }
 
-    // Since ESP32 usually wants a single fence or a list, let's look at what the user typically draws.
-    // If multiple layers, proper JSON structure would be an array.
-    // However, the request example shows a single object. 
-    // Let's support an Array of objects if multiple, or a single Object if one.
-
     const layers = layerGroup.getLayers();
     const esp32Data = layers.map(layer => getEsp32Format(layer)).filter(i => i !== null);
 
     if (esp32Data.length === 0) {
-        alert("Export failed: No valid fences found.\n- Polygons must have at least 3 points.\n- Circles must have a valid center/radius.");
+        alert("Export failed: No valid fences found.");
         return null;
     }
 
-    // If only one, return object. If multiple, return array. 
-    // (Or should we always return array for consistency? Let's stick to the prompt's single object style if one)
     const finalOutput = esp32Data.length === 1 ? esp32Data[0] : esp32Data;
-
-    // Trigger Download
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(finalOutput, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "fence-esp32.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-
     return finalOutput;
+}
+
+export async function syncFenceToApi(layerGroup) {
+    const data = exportFenceToESP32(layerGroup);
+    if (!data) return null;
+
+    try {
+        const response = await fetch('/api/geofence', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) throw new Error("Server responded with error");
+
+        console.log("Fence synced to API successfully");
+        return await response.json();
+    } catch (err) {
+        console.error("Sync failed:", err);
+        throw err;
+    }
+}
+
+export function exportFenceToEsp32Firmware(layerGroup) {
+    const data = exportFenceToESP32(layerGroup);
+    if (!data) return null;
+
+    const jsonStr = JSON.stringify(data, null, 2);
+    // Wrap in C++ raw literal
+    const firmwareString = `const char* geoFence = R"rawliteral(\n${jsonStr}\n)rawliteral";`;
+
+    return firmwareString;
 }
 
 export function exportFence(layerGroup) {

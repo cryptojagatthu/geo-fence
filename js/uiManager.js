@@ -63,34 +63,57 @@ export function setupUI() {
         });
     }
 
-    const btnExportESP32 = document.getElementById('btn-export-esp32');
+    const btnSyncApi = document.getElementById('btn-sync-api');
+    const btnExportFirmware = document.getElementById('btn-export-firmware');
+    const syncStatus = document.getElementById('sync-status');
     const esp32Container = document.getElementById('esp32-output-container');
     const esp32Textarea = document.getElementById('esp32-json-output');
+    const esp32Label = document.getElementById('esp32-output-label');
     const btnCopyESP32 = document.getElementById('btn-copy-esp32');
 
-    if (btnExportESP32) {
-        btnExportESP32.addEventListener('click', () => {
-            console.log("ESP32 Export Clicked");
+    if (btnSyncApi) {
+        btnSyncApi.addEventListener('click', async () => {
+            const fenceLayer = getFenceLayer();
+            if (!fenceLayer || fenceLayer.getLayers().length === 0) {
+                alert("Draw a fence first!");
+                return;
+            }
+
+            syncStatus.classList.remove('hidden');
+            syncStatus.style.background = '#fef3c7'; // Warning/Pending
+            syncStatus.style.color = '#92400e';
+            syncStatus.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Syncing to Cloud...';
+
             try {
-                // Dynamic import to avoid circular dependency if needed, but we put it in dataManager
-                // We need to import the new function
+                const { syncFenceToApi } = await import('./dataManager.js');
+                await syncFenceToApi(fenceLayer);
+
+                syncStatus.style.background = '#dcfce7'; // Success
+                syncStatus.style.color = '#166534';
+                syncStatus.innerHTML = '<i class="fa-solid fa-check"></i> Synced Successfully!';
+            } catch (err) {
+                syncStatus.style.background = '#fee2e2'; // Error
+                syncStatus.style.color = '#991b1b';
+                syncStatus.innerHTML = '<i class="fa-solid fa-xmark"></i> Sync Failed';
+            }
+            setTimeout(() => syncStatus.classList.add('hidden'), 3000);
+        });
+    }
+
+    if (btnExportFirmware) {
+        btnExportFirmware.addEventListener('click', async () => {
+            try {
+                const { getFenceLayer } = await import('./fenceLogic.js');
+                const { exportFenceToEsp32Firmware } = await import('./dataManager.js');
+
                 const fenceLayer = getFenceLayer();
-                if (!fenceLayer) {
-                    console.error("Fence Layer is null");
-                    alert("Error: Fence layer not found.");
-                    return;
-                }
+                const firmwareCode = exportFenceToEsp32Firmware(fenceLayer);
 
-                console.log("Fence Layer Layers:", fenceLayer.getLayers().length);
-
-                const data = exportFenceToESP32(fenceLayer);
-                console.log("Export Data:", data);
-
-                if (data) {
-                    esp32Container.style.display = 'block';
-                    // Remove hidden class if present
+                if (firmwareCode) {
                     esp32Container.classList.remove('hidden');
-                    esp32Textarea.value = JSON.stringify(data, null, 2);
+                    esp32Container.style.display = 'block';
+                    esp32Label.textContent = "C++ Firmware Code (Copy/Paste):";
+                    esp32Textarea.value = firmwareCode;
                 }
             } catch (e) {
                 console.error("Export Failed:", e);

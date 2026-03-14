@@ -1,0 +1,26 @@
+{
+  "name": "geo-fencing-simulator",
+  "version": "1.0.0",
+  "description": "A web-based simulation for livestock monitoring using geofencing. This project allows users to draw custom boundaries (Polygons, Circles) on an interactive map and simulate animal movement with real-time \"Safe/Unsafe\" alerts.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cryptojagatthu/geo-fence.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/cryptojagatthu/geo-fence/issues"
+  },
+  "homepage": "https://github.com/cryptojagatthu/geo-fence#readme",
+  "dependencies": {
+    "body-parser": "^2.2.2",
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}
