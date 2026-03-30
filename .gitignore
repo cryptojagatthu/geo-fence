@@ -1,3 +1,5 @@
 node_modules
 geofence_data.json
+.env
+.env.local
 .DS_Store

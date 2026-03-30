@@ -1,150 +1,143 @@
 /**
- * Cow Manager
- * Handles the cow marker, movement events, and collision detection loop.
+ * Cow Manager (Now IoT Device Manager)
+ * Handles fetching device locations and updating multiple markers on the map.
  */
 
 import { isPointInFence } from './fenceLogic.js';
-import { updateStatus, updateCoords } from './uiManager.js';
+import { updateDeviceUI } from './uiManager.js';
 
-let cowMarker;
-let autoWalkInterval;
-const WALKING_SPEED_MS = 1000;
-const STEP_SIZE = 0.00015; // Rough lat/lng step size
-
-// --- Live GPS Mode ---
-let watchId = null;
-let mapInstance; // Store map reference
+let deviceMarkers = {};
+let pollInterval;
+const POLL_INTERVAL_MS = 3000;
+let mapInstance;
 
 export function setupCow(map) {
-    mapInstance = map; // Capture map instance
-    // Initial position (center of map)
-    const startPos = map.getCenter();
-
-    // Custom Icon
-    const cowIcon = L.divIcon({
-        className: 'custom-cow-icon',
-        html: '<div style="font-size: 32px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">🐄</div>',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
-    });
-
-    cowMarker = L.marker(startPos, {
-        draggable: true,
-        icon: cowIcon
-    }).addTo(map);
-
-    // Event: Dragging
-    cowMarker.on('drag', () => {
-        checkPosition();
-    });
-
-    // Event: Drag End
-    cowMarker.on('dragend', () => {
-        checkPosition();
-    });
-
-    checkPosition(); // Initial check
+    mapInstance = map;
+    startPolling();
 }
 
-// --- Simulation Mode ---
-export function startSimulation() {
-    if (autoWalkInterval) return;
-
-    // Disable Live GPS if active
-    stopLiveTracking();
-
-    console.log('Auto-Walk Started');
-    autoWalkInterval = setInterval(() => {
-        moveCowRandomly();
-    }, WALKING_SPEED_MS);
+export function startPolling() {
+    if (pollInterval) return;
+    console.log('Started polling IoT devices...');
+    pollInterval = setInterval(fetchLatestDevices, POLL_INTERVAL_MS);
+    fetchLatestDevices(); // initial fetch
 }
 
-export function stopSimulation() {
-    if (autoWalkInterval) {
-        clearInterval(autoWalkInterval);
-        autoWalkInterval = null;
-        console.log('Auto-Walk Stopped');
+export function stopPolling() {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+        console.log('Stopped polling IoT devices.');
     }
 }
 
+async function fetchLatestDevices() {
+    try {
+        const response = await fetch('/api/latest');
+        if (!response.ok) throw new Error("Failed to fetch latest devices");
+        
+        const devices = await response.json();
+        
+        let anyOutside = false;
 
+        devices.forEach(device => {
+            const { deviceId, lat, lng, status, battery, timestamp } = device;
+            const newLatLng = [lat, lng];
+            
+            if (status === 'OUTSIDE') anyOutside = true;
 
-export function startLiveTracking() {
-    if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser.");
-        return;
-    }
-
-    // Stop random walk if active
-    stopSimulation();
-
-    // Reset toggle UI for simulation (will be handled in UI manager, but good to be safe)
-
-    const options = {
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0
-    };
-
-    console.log("Starting Live Tracking...");
-
-    watchId = navigator.geolocation.watchPosition(
-        (position) => {
-            const { latitude, longitude, accuracy } = position.coords;
-            console.log(`GPS Update: ${latitude}, ${longitude} (Acc: ${accuracy}m)`);
-
-            const newLatLng = [latitude, longitude];
-
-            if (cowMarker) {
-                cowMarker.setLatLng(newLatLng);
-                if (mapInstance) { // Ensure mapInstance is available
-                    mapInstance.setView(newLatLng, 18); // Keep map centered on user
-                }
-                checkPosition();
+            if (deviceMarkers[deviceId]) {
+                // Update existing marker
+                deviceMarkers[deviceId].setLatLng(newLatLng);
+                updateMarkerVisuals(deviceMarkers[deviceId], device);
+            } else {
+                // Create new marker
+                const marker = createDeviceMarker(device);
+                marker.addTo(mapInstance);
+                deviceMarkers[deviceId] = marker;
             }
-        },
-        (error) => {
-            console.warn(`ERROR(${error.code}): ${error.message}`);
-            alert(`GPS Error: ${error.message}`);
-            // Optionally auto-toggle off logic here
-        },
-        options
-    );
-}
+        });
 
-export function stopLiveTracking() {
-    if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-        console.log("Live Tracking Stopped");
+        // Update overall UI status based on if ANY device is outside
+        updateDeviceUI(anyOutside, devices);
+
+    } catch (err) {
+        console.error("Polling error:", err);
     }
 }
 
-function moveCowRandomly() {
-    if (!cowMarker) return;
+function createDeviceMarker(device) {
+    const { deviceId, status } = device;
+    const color = status === 'OUTSIDE' ? '#dc2626' : '#16a34a'; // Red / Green
+    
+    // Custom icon with emoji and a label
+    const icon = L.divIcon({
+        className: 'custom-cow-icon',
+        html: `
+            <div style="font-size: 28px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); text-align: center;">🐄</div>
+            <div style="background: white; color: #1e293b; padding: 2px 6px; border-radius: 12px; font-size: 11px; font-weight: 700; text-align: center; margin-top: -5px; border: 2px solid ${color}; display: inline-block; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                <i class="fa-solid fa-circle" style="color: ${color}; font-size: 8px; margin-right: 3px;"></i>${deviceId}
+            </div>
+        `,
+        iconSize: [60, 50],
+        iconAnchor: [30, 25]
+    });
 
-    const currentLatLng = cowMarker.getLatLng();
-    const latDelta = (Math.random() - 0.5) * STEP_SIZE;
-    const lngDelta = (Math.random() - 0.5) * STEP_SIZE;
-
-    const newLatLng = [currentLatLng.lat + latDelta, currentLatLng.lng + lngDelta];
-
-    cowMarker.setLatLng(newLatLng);
-
-    // Pan map if cow gets too close to edge? Optional.
-
-    checkPosition();
+    const marker = L.marker([device.lat, device.lng], { icon });
+    marker.bindPopup(generatePopupContent(device));
+    return marker;
 }
 
-export function resetCow(map) {
-    cowMarker.setLatLng(map.getCenter());
-    checkPosition();
+function updateMarkerVisuals(marker, device) {
+    const { deviceId, status } = device;
+    const color = status === 'OUTSIDE' ? '#dc2626' : '#16a34a'; // Red / Green
+    
+    const icon = L.divIcon({
+        className: 'custom-cow-icon',
+        html: `
+            <div style="font-size: 28px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); text-align: center;">🐄</div>
+            <div style="background: white; color: #1e293b; padding: 2px 6px; border-radius: 12px; font-size: 11px; font-weight: 700; text-align: center; margin-top: -5px; border: 2px solid ${color}; display: inline-block; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                <i class="fa-solid fa-circle" style="color: ${color}; font-size: 8px; margin-right: 3px;"></i>${deviceId}
+            </div>
+        `,
+        iconSize: [60, 50],
+        iconAnchor: [30, 25]
+    });
+
+    marker.setIcon(icon);
+    
+    // Only update popup content if it's currently open to avoid flickering
+    if (marker.isPopupOpen()) {
+        marker.setPopupContent(generatePopupContent(device));
+    } else {
+        // Just bind the new content for the next time it's opened
+        marker.bindPopup(generatePopupContent(device));
+    }
 }
 
-function checkPosition() {
-    const pos = cowMarker.getLatLng();
-    const isSafe = isPointInFence(pos.lat, pos.lng);
-
-    updateCoords(pos.lat, pos.lng);
-    updateStatus(isSafe);
+function generatePopupContent(device) {
+    const { deviceId, status, battery, timestamp, lat, lng } = device;
+    const timeStr = new Date(timestamp).toLocaleTimeString();
+    const color = status === 'OUTSIDE' ? '#dc2626' : '#16a34a';
+    
+    return `
+        <div style="min-width: 160px; font-family: 'Inter', sans-serif;">
+            <h4 style="margin: 0 0 8px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; font-size: 14px; display: flex; justify-content: space-between; align-items: center;">
+                <span><i class="fa-solid fa-tag"></i> ${deviceId}</span>
+                <span class="fa-solid fa-battery-${battery > 70 ? 'full' : battery > 30 ? 'half' : 'empty'}" style="color: ${battery > 20 ? '#16a34a' : '#dc2626'}"> ${battery}%</span>
+            </h4>
+            <div style="font-size: 12px; line-height: 1.6;">
+                <p style="margin: 2px 0; display: flex; justify-content: space-between;"><b>Status:</b> <strong style="color: ${color}; padding: 2px 6px; background: ${status === 'OUTSIDE' ? '#fee2e2' : '#dcfce7'}; border-radius: 4px;">${status}</strong></p>
+                <p style="margin: 4px 0; color: #64748b; font-family: 'Roboto Mono', monospace; font-size: 11px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
+                <p style="margin: 6px 0 0 0; font-size: 11px; color: #94a3b8; border-top: 1px dashed #e2e8f0; padding-top: 6px;"><i class="fa-regular fa-clock"></i> Last Update: ${timeStr}</p>
+            </div>
+        </div>
+    `;
 }
+
+// Obsolete simulation functions (stubbed out to avoid breaking uiManager if it still calls them)
+export function startSimulation() { console.log('Simulation disabled in IoT mode'); }
+export function stopSimulation() { }
+export function startLiveTracking() { console.log('Live tracking disabled in IoT mode'); }
+export function stopLiveTracking() { }
+export function resetCow() { }

@@ -1,59 +1,16 @@
 /**
- * UI Manager
- * Handles DOM updates, buttons, and alerts.
+ * UI Manager for IoT Tracking System
+ * Handles DOM updates, buttons, and alerts rendering.
  */
 
-import { startSimulation, stopSimulation, startLiveTracking, stopLiveTracking, resetCow } from './cowManager.js';
 import { map } from './mapManager.js';
 import { exportFence, importFence, exportFenceToESP32 } from './dataManager.js';
 import { getFenceLayer } from './fenceLogic.js';
 
-// Status caching to prevent flickering
 let lastStatus = null;
+let lastAlertFetchTime = 0;
 
 export function setupUI() {
-
-    // --- Simulation Controls ---
-    const toggleWalk = document.getElementById('toggle-auto-walk');
-    const toggleGPS = document.getElementById('toggle-live-gps');
-
-    if (toggleWalk) {
-        toggleWalk.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                // Turn off GPS if on
-                if (toggleGPS && toggleGPS.checked) {
-                    toggleGPS.checked = false;
-                    stopLiveTracking();
-                }
-                startSimulation();
-            } else {
-                stopSimulation();
-            }
-        });
-    }
-
-    if (toggleGPS) {
-        toggleGPS.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                // Turn off Auto-Walk if on
-                if (toggleWalk && toggleWalk.checked) {
-                    toggleWalk.checked = false;
-                    stopSimulation();
-                }
-                startLiveTracking();
-            } else {
-                stopLiveTracking();
-            }
-        });
-    }
-
-    const btnReset = document.getElementById('btn-reset-cow');
-    if (btnReset) {
-        btnReset.addEventListener('click', () => {
-            resetCow(map);
-        });
-    }
-
     // --- Data Controls ---
     const btnExport = document.getElementById('btn-export');
     if (btnExport) {
@@ -127,13 +84,15 @@ export function setupUI() {
             esp32Textarea.select();
             document.execCommand('copy'); // Fallback
             // Modern API
-            navigator.clipboard.writeText(esp32Textarea.value).then(() => {
-                const originalText = btnCopyESP32.innerHTML;
-                btnCopyESP32.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
-                setTimeout(() => {
-                    btnCopyESP32.innerHTML = originalText;
-                }, 2000);
-            });
+            if(navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(esp32Textarea.value).then(() => {
+                    const originalText = btnCopyESP32.innerHTML;
+                    btnCopyESP32.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                    setTimeout(() => {
+                        btnCopyESP32.innerHTML = originalText;
+                    }, 2000);
+                });
+            }
         });
     }
 
@@ -155,55 +114,83 @@ export function setupUI() {
         });
     }
 
-    // We'll hook up drawing buttons in main or fenceLogic when we add Leaflet.Draw
+    // Initial fetch of alert history
+    fetchAlertHistory();
 }
 
-export function updateCoords(lat, lng) {
-    document.getElementById('cow-lat').textContent = lat.toFixed(5);
-    document.getElementById('cow-lng').textContent = lng.toFixed(5);
-}
+/**
+ * Called every poll cycle from cowManager.js
+ */
+export function updateDeviceUI(anyOutside, devices) {
+    // Update tracking count
+    const countEl = document.getElementById('active-device-count');
+    if (countEl) countEl.textContent = devices.length;
 
-export function updateStatus(isSafe) {
     const statusCard = document.getElementById('status-indicator');
     const statusText = document.getElementById('status-text');
     const alertBanner = document.getElementById('alert-banner');
     const audioAlert = document.getElementById('audio-alert');
 
-    // Debounce/Hysteresis logic could go here if needed
-    // For now, direct update
-
-    if (isSafe) {
+    if (!anyOutside) {
         if (lastStatus === 'safe') return;
 
         statusCard.className = 'status-card safe';
-        statusText.textContent = 'Inside Safe Zone';
-        alertBanner.classList.add('hidden');
+        statusText.textContent = 'All Devices Inside';
+        if (alertBanner) alertBanner.classList.add('hidden');
 
-        // Stop audio
-        audioAlert.pause();
-        audioAlert.currentTime = 0;
+        if (audioAlert) {
+            audioAlert.pause();
+            audioAlert.currentTime = 0;
+        }
 
         lastStatus = 'safe';
     } else {
-        // Only trigger danger if there are actually fences drawn
-        // If no fences, technically "outside" but maybe we want a "No Fence" state?
-        // For simplicity, let's assume if there are fences, handling is active.
-        // We might need to check if any layers exist.
-
-        // Check if any fences exist
-        // This circular dependency (ui -> fence) needs to be handled carefully. 
-        // We will deal with it in fenceLogic passing a 'hasFences' flag or checking layers count.
-        // For now, assume if this is called, logic ran.
-
-        if (lastStatus === 'danger') return;
+        if (lastStatus === 'danger') {
+            // Periodically refresh the sidebar alert history while in danger state
+            if (Date.now() - lastAlertFetchTime > 5000) fetchAlertHistory();
+            return;
+        }
 
         statusCard.className = 'status-card danger';
-        statusText.textContent = 'OUTSIDE FENCE';
-        alertBanner.classList.remove('hidden');
+        statusText.textContent = 'WARNING: DEVICE OUTSIDE';
+        if (alertBanner) alertBanner.classList.remove('hidden');
 
         // Play audio
-        audioAlert.play().catch(e => console.log('Audio play failed (interaction needed):', e));
+        if (audioAlert) {
+            audioAlert.play().catch(e => console.log('Audio play failed (interaction needed):', e));
+        }
 
         lastStatus = 'danger';
+        fetchAlertHistory();
+    }
+}
+
+async function fetchAlertHistory() {
+    try {
+        lastAlertFetchTime = Date.now();
+        const res = await fetch('/api/alerts?limit=10');
+        if (!res.ok) return;
+        
+        const alerts = await res.json();
+        const historyList = document.getElementById('alert-history-list');
+        if (!historyList) return;
+
+        if (alerts.length === 0) {
+            historyList.innerHTML = '<div style="color: #64748b; font-style: italic;">No alerts yet.</div>';
+            return;
+        }
+
+        historyList.innerHTML = alerts.map(a => {
+            const timeStr = new Date(a.timestamp).toLocaleTimeString();
+            return `
+                <div style="background: #fee2e2; border-left: 3px solid #ef4444; padding: 6px; border-radius: 4px; line-height: 1.4;">
+                    <strong style="color: #991b1b; display: block; font-size: 11px;">${a.deviceId} <span style="float: right; color: #7f1d1d;">${timeStr}</span></strong>
+                    <span style="color: #7f1d1d; font-size: 10px;">${a.lat.toFixed(4)}, ${a.lng.toFixed(4)}</span>
+                </div>
+            `;
+        }).join('');
+
+    } catch (e) {
+        console.error("Failed to fetch alert history:", e);
     }
 }

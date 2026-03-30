@@ -3,6 +3,11 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
+const mongoose = require('mongoose');
+
+// Models
+const DeviceData = require('./models/DeviceData');
+const Alert = require('./models/Alert');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,10 +18,20 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(__dirname)); // Serve the static simulator files
 
+// Connect to MongoDB
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/geofence';
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
 // Initial data if file doesn't exist
 if (!fs.existsSync(DATA_FILE)) {
     fs.writeFileSync(DATA_FILE, JSON.stringify({ type: "none" }, null, 2));
 }
+
+// ---------------------------------------------------------------------------
+// OLD GEOFENCE APIs (Used by Simulator to set/get global fence)
+// ---------------------------------------------------------------------------
 
 /**
  * GET /api/geofence
@@ -55,7 +70,130 @@ app.post('/api/geofence', (req, res) => {
     }
 });
 
+// ---------------------------------------------------------------------------
+// NEW IOT TRACKING APIs
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/device-data
+ * Ingests data from ESP32/IoT devices.
+ */
+app.post('/api/device-data', async (req, res) => {
+    try {
+        const { deviceId, lat, lng, status, battery } = req.body;
+
+        if (!deviceId || lat == null || lng == null || !status || battery == null) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        // Save location data
+        const deviceData = new DeviceData({
+            deviceId,
+            lat,
+            lng,
+            status,
+            battery
+        });
+        await deviceData.save();
+
+        // Alert Engine: If OUTSIDE, create an alert
+        if (status === 'OUTSIDE') {
+            const alert = new Alert({
+                deviceId,
+                lat,
+                lng,
+                message: `Device ${deviceId} has breached the active geofence.`
+            });
+            await alert.save();
+        }
+
+        res.status(201).json({ message: "Data logged successfully", success: true });
+    } catch (err) {
+        console.error("Error saving device data:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+/**
+ * GET /api/latest
+ * Get the latest known locations for ALL active devices.
+ */
+app.get('/api/latest', async (req, res) => {
+    try {
+        // Aggregate to find the latest record per deviceId
+        const latestData = await DeviceData.aggregate([
+            { $sort: { timestamp: -1 } },
+            {
+                $group: {
+                    _id: "$deviceId",
+                    latestRecord: { $first: "$$ROOT" }
+                }
+            },
+            { $replaceRoot: { newRoot: "$latestRecord" } }
+        ]);
+
+        res.json(latestData);
+    } catch (err) {
+        console.error("Error fetching latest devices:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+/**
+ * GET /api/latest/:deviceId
+ * Get the latest known location for a SPECIFIC device.
+ */
+app.get('/api/latest/:deviceId', async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        const latestData = await DeviceData.findOne({ deviceId }).sort({ timestamp: -1 });
+        
+        if (!latestData) return res.status(404).json({ error: "Device not found" });
+
+        res.json(latestData);
+    } catch (err) {
+        console.error(`Error fetching latest for ${req.params.deviceId}:`, err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+/**
+ * GET /api/history/:deviceId
+ * Get the past movement for a SPECIFIC device.
+ */
+app.get('/api/history/:deviceId', async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        const limit = parseInt(req.query.limit) || 100; // default 100 points
+        const history = await DeviceData.find({ deviceId })
+            .sort({ timestamp: -1 })
+            .limit(limit);
+
+        res.json(history);
+    } catch (err) {
+        console.error(`Error fetching history for ${req.params.deviceId}:`, err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+/**
+ * GET /api/alerts
+ * Get active alerts (optional extra endpoint for UI)
+ */
+app.get('/api/alerts', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 20;
+        const alerts = await Alert.find({ active: true })
+            .sort({ timestamp: -1 })
+            .limit(limit);
+        res.json(alerts);
+    } catch (err) {
+        console.error("Error fetching alerts:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);
-    console.log(`ESP32 API Endpoint: http://localhost:${PORT}/api/geofence`);
+    console.log(`ESP32 Device Data Ingest: POST http://localhost:${PORT}/api/device-data`);
 });

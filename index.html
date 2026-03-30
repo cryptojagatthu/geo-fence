@@ -95,39 +95,19 @@
                 </div>
             </div>
 
-            <!-- Simulation Controls -->
+            <!-- IoT Device Info & Alert History -->
             <div class="control-group">
-                <h3><i class="fa-solid fa-gamepad"></i> Simulation</h3>
-
-                <div class="toggle-switch">
-                    <label for="toggle-auto-walk">Auto-Walk (Random)</label>
-                    <input type="checkbox" id="toggle-auto-walk">
+                <h3><i class="fa-solid fa-satellite-dish"></i> IoT Devices</h3>
+                <div id="device-count" style="font-size: 0.9rem; margin-bottom: 10px; font-weight: 500;">
+                    Active Devices: <span id="active-device-count" style="color: #0284c7;">0</span>
                 </div>
-
-                <div class="toggle-switch mt-2">
-                    <label for="toggle-live-gps">Live GPS Tracking</label>
-                    <input type="checkbox" id="toggle-live-gps">
-                </div>
-
-                <!-- Coordinate Display -->
-                <div class="coord-display">
-                    <div class="coord-row">
-                        <span>Lat:</span>
-                        <span id="cow-lat" class="mono">--.----</span>
-                    </div>
-                    <div class="coord-row">
-                        <span>Lng:</span>
-                        <span id="cow-lng" class="mono">--.----</span>
-                    </div>
-                </div>
-                <button id="btn-reset-cow" class="btn btn-primary mt-2"><i class="fa-solid fa-location-crosshairs"></i>
-                    Reset Position</button>
             </div>
 
-            <!-- Instructions (Collapsible or just small text) -->
-            <div class="instructions">
-                <p><small><i class="fa-solid fa-circle-info"></i> Draw a fence on the map. Drag the cow marker to
-                        simulate movement.</small></p>
+            <div class="control-group" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;">
+                <h3 style="margin-bottom: 8px;"><i class="fa-solid fa-bell"></i> Alert History</h3>
+                <div id="alert-history-list" style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 5px;">
+                    <div style="color: #64748b; font-style: italic;">No alerts yet.</div>
+                </div>
             </div>
         </aside>
 
