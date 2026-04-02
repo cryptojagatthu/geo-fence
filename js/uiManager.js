@@ -114,6 +114,28 @@ export function setupUI() {
         });
     }
 
+    // --- Tracking Mode Toggle ---
+    const trackingToggle = document.getElementById('tracking-mode-toggle');
+    const iotInfo = document.getElementById('iot-device-info');
+    const simInfo = document.getElementById('simulation-info');
+
+    if (trackingToggle) {
+        trackingToggle.addEventListener('change', async (e) => {
+            const isIoT = e.target.checked;
+            const { setTrackingMode } = await import('./cowManager.js');
+            
+            if (isIoT) {
+                setTrackingMode('iot');
+                iotInfo.classList.remove('hidden');
+                simInfo.classList.add('hidden');
+            } else {
+                setTrackingMode('simulation');
+                iotInfo.classList.add('hidden');
+                simInfo.classList.remove('hidden');
+            }
+        });
+    }
+
     // Initial fetch of alert history
     fetchAlertHistory();
 }

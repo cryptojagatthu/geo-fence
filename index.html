@@ -95,11 +95,26 @@
                 </div>
             </div>
 
-            <!-- IoT Device Info & Alert History -->
+            <!-- Tracking Mode & IoT Device Info -->
             <div class="control-group">
-                <h3><i class="fa-solid fa-satellite-dish"></i> IoT Devices</h3>
-                <div id="device-count" style="font-size: 0.9rem; margin-bottom: 10px; font-weight: 500;">
-                    Active Devices: <span id="active-device-count" style="color: #0284c7;">0</span>
+                <h3><i class="fa-solid fa-satellite-dish"></i> Tracking Mode</h3>
+                <div class="toggle-switch">
+                    <span>Manual Simulation</span>
+                    <label class="switch">
+                        <input type="checkbox" id="tracking-mode-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span>IoT Live</span>
+                </div>
+
+                <div id="iot-device-info" class="mt-2 hidden">
+                    <div id="device-count" style="font-size: 0.9rem; font-weight: 500;">
+                        Active Devices: <span id="active-device-count" style="color: #0284c7;">0</span>
+                    </div>
+                </div>
+
+                <div id="simulation-info" class="mt-2 text-muted" style="font-size: 0.8rem; font-style: italic;">
+                    Simulation Mode: Drag cow marker manually to test fence.
                 </div>
             </div>
 
