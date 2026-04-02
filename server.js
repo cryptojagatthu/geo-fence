@@ -193,6 +193,19 @@ app.get('/api/alerts', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/health
+ * Diagnostic endpoint to check server and DB status.
+ */
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'UP',
+        database: mongoose.connection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED',
+        dbState: mongoose.connection.readyState,
+        env: process.env.NODE_ENV || 'production'
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);
     console.log(`ESP32 Device Data Ingest: POST http://localhost:${PORT}/api/device-data`);
