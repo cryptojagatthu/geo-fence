@@ -19,10 +19,17 @@ app.use(bodyParser.json());
 app.use(express.static(__dirname)); // Serve the static simulator files
 
 // Connect to MongoDB
+let lastConnectionError = null;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/geofence';
 mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .then(() => {
+    console.log('Connected to MongoDB');
+    lastConnectionError = null;
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    lastConnectionError = err.message;
+  });
 
 // Initial data if file doesn't exist
 if (!fs.existsSync(DATA_FILE)) {
@@ -193,15 +200,12 @@ app.get('/api/alerts', async (req, res) => {
     }
 });
 
-/**
- * GET /api/health
- * Diagnostic endpoint to check server and DB status.
- */
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'UP',
         database: mongoose.connection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED',
         dbState: mongoose.connection.readyState,
+        error: lastConnectionError,
         env: process.env.NODE_ENV || 'production'
     });
 });
