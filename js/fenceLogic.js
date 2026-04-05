@@ -14,6 +14,9 @@ export function setupFenceControls(map) {
 
     // Event Handlers for Draw Creation
     map.on(L.Draw.Event.CREATED, (e) => {
+        // Enforce single boundary: Clear any existing before adding new
+        drawnItems.clearLayers();
+        
         const layer = e.layer;
         drawnItems.addLayer(layer);
 
