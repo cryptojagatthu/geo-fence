@@ -41,3 +41,34 @@ export function initMap(containerId) {
 
     return map;
 }
+export function locateUser() {
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const { latitude, longitude } = position.coords;
+            map.setView([latitude, longitude], 18);
+            
+            // Add a temporary marker for the user's location
+            const userIcon = L.divIcon({
+                html: '<i class="fa-solid fa-house-user" style="color: #2563eb; font-size: 24px; text-shadow: 0 0 5px white;"></i>',
+                className: 'user-location-icon',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+            
+            L.marker([latitude, longitude], { icon: userIcon })
+                .addTo(map)
+                .bindPopup("You are here")
+                .openPopup();
+        },
+        (error) => {
+            console.error("Geolocation error:", error);
+            alert("Unable to retrieve your location. Please check your browser permissions.");
+        },
+        { enableHighAccuracy: true }
+    );
+}

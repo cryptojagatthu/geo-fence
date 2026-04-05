@@ -3,7 +3,7 @@
  * Handles DOM updates, buttons, and alerts rendering.
  */
 
-import { map } from './mapManager.js';
+import { map, locateUser } from './mapManager.js';
 import { exportFence, importFence, exportFenceToESP32, fetchSavedFences, saveFenceToLibrary, deleteFenceFromLibrary, loadFenceDataToMap, syncFenceToApi } from './dataManager.js';
 import { getFenceLayer } from './fenceLogic.js';
 
@@ -111,6 +111,13 @@ export function setupUI() {
                 importFence(file, map, fenceLayer);
                 fileInput.value = ''; // Reset for consecutive imports
             }
+        });
+    }
+
+    const btnLocateMe = document.getElementById('btn-locate-me');
+    if (btnLocateMe) {
+        btnLocateMe.addEventListener('click', () => {
+            locateUser();
         });
     }
 
