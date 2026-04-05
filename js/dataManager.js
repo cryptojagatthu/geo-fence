@@ -291,3 +291,29 @@ export function loadFenceDataToMap(data, map, layerGroup) {
         map.fitBounds(layerGroup.getBounds());
     }
 }
+
+/**
+ * Unload the active geofence from the cloud (sets type to none).
+ */
+export async function syncNoneToApi() {
+    try {
+        const response = await fetch('/api/geofence', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ type: "none" })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `Server returned ${response.status}`);
+        }
+
+        console.log("Geofence unloaded from cloud successfully");
+        return await response.json();
+    } catch (err) {
+        console.error("Unload failed:", err);
+        throw err;
+    }
+}

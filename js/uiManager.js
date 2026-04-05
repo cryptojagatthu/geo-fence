@@ -4,7 +4,7 @@
  */
 
 import { map, locateUser } from './mapManager.js';
-import { exportFence, importFence, exportFenceToESP32, fetchSavedFences, saveFenceToLibrary, deleteFenceFromLibrary, loadFenceDataToMap, syncFenceToApi } from './dataManager.js';
+import { exportFence, importFence, exportFenceToESP32, fetchSavedFences, saveFenceToLibrary, deleteFenceFromLibrary, loadFenceDataToMap, syncFenceToApi, syncNoneToApi } from './dataManager.js';
 import { getFenceLayer } from './fenceLogic.js';
 import { setAutoTracking } from './cowManager.js';
 
@@ -126,6 +126,29 @@ export function setupUI() {
     if (chkAutoTrack) {
         chkAutoTrack.addEventListener('change', (e) => {
             setAutoTracking(e.target.checked);
+        });
+    }
+
+    const btnClear = document.getElementById('btn-clear-fence');
+    if (btnClear) {
+        btnClear.addEventListener('click', async () => {
+            const drawnItems = getFenceLayer();
+            drawnItems.clearLayers();
+            
+            // Sync "none" state to cloud
+            syncStatus.classList.remove('hidden');
+            syncStatus.style.background = '#fef3c7';
+            syncStatus.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Unloading...';
+
+            try {
+                await syncNoneToApi();
+                syncStatus.style.background = '#dcfce7';
+                syncStatus.innerHTML = '<i class="fa-solid fa-check"></i> Unloaded Successfully!';
+            } catch (err) {
+                syncStatus.style.background = '#fee2e2';
+                syncStatus.innerHTML = '<i class="fa-solid fa-xmark"></i> Unload Failed';
+            }
+            setTimeout(() => syncStatus.classList.add('hidden'), 3000);
         });
     }
 

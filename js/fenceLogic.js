@@ -63,13 +63,6 @@ export function setupFenceControls(map) {
         });
     }
 
-    // 3. Clear Fence
-    const btnClear = document.getElementById('btn-clear-fence');
-    if (btnClear) {
-        btnClear.addEventListener('click', () => {
-            drawnItems.clearLayers();
-            console.log('Fences Cleared');
-        });
     }
 }
 
