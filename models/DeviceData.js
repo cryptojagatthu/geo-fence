@@ -4,7 +4,7 @@ const deviceDataSchema = new mongoose.Schema({
     deviceId: { type: String, required: true },
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },
-    status: { type: String, enum: ['INSIDE', 'OUTSIDE', 'UNKNOWN', 'NO_FENCE'], required: true },
+    status: { type: String, enum: ['INSIDE', 'OUTSIDE', 'UNKNOWN'], required: true },
     battery: { type: Number, required: true },
     timestamp: { type: Date, default: Date.now }
 });

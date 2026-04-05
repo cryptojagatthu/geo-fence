@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 const DeviceData = require('./models/DeviceData');
 const Alert = require('./models/Alert');
 const SavedFence = require('./models/SavedFence');
+const ActiveFence = require('./models/ActiveFence');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -52,28 +53,46 @@ app.get('/api/geofence', (req, res) => {
         res.send(data);
     } catch (err) {
         console.error("Error reading geofence data:", err);
+// -------- Geofence API (Active Configuration) --------
+
+app.get('/api/geofence', async (req, res) => {
+    try {
+        const active = await ActiveFence.findOne({ type: "active" });
+        if (active) {
+            res.json(active.data);
+        } else {
+            // Fallback to file if it exists (for migration) or return empty
+            if (fs.existsSync(DATA_FILE)) {
+                const data = fs.readFileSync(DATA_FILE, 'utf8');
+                return res.json(JSON.parse(data));
+            }
+            res.json({ type: "none", message: "No active geofence set" });
+        }
+    } catch (err) {
+        console.error("Error fetching active geofence:", err);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
-/**
- * POST /api/geofence
- * Updates the current geo-fence configuration from the simulator.
- */
-app.post('/api/geofence', (req, res) => {
+app.post('/api/geofence', async (req, res) => {
     try {
-        const fenceData = req.body;
+        const data = req.body;
+        
+        // Update or Create the active fence document
+        await ActiveFence.findOneAndUpdate(
+            { type: "active" },
+            { data: data, timestamp: new Date() },
+            { upsert: true, new: true }
+        );
 
-        // Basic validation
-        if (!fenceData || !fenceData.type) {
-            return res.status(400).json({ error: "Invalid fence data" });
-        }
+        // Optional: Still write to file as a backup (but ignore errors)
+        try {
+            fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+        } catch (e) {}
 
-        fs.writeFileSync(DATA_FILE, JSON.stringify(fenceData, null, 2));
-        console.log("Geofence updated successfully");
-        res.json({ message: "Fence updated successfully", data: fenceData });
+        res.json({ message: "Geofence synced to cloud successfully", data });
     } catch (err) {
-        console.error("Error writing geofence data:", err);
+        console.error("Error syncing geofence:", err);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });

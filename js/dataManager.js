@@ -108,7 +108,10 @@ export async function syncFenceToApi(layerGroup) {
             body: JSON.stringify(data)
         });
 
-        if (!response.ok) throw new Error("Server responded with error");
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `Server returned ${response.status}`);
+        }
 
         console.log("Fence synced to API successfully");
         return await response.json();
