@@ -263,27 +263,29 @@ export function loadFenceDataToMap(data, map, layerGroup) {
 
     layerGroup.clearLayers();
 
+    // Enforce single boundary even on load
     const items = Array.isArray(data) ? data : [data];
+    if (items.length === 0) return;
 
-    items.forEach(item => {
-        if (item.type === 'polygon') {
-            const latlngs = item.points.map(p => [p.lat, p.lng]);
-            const poly = L.polygon(latlngs, {
-                color: '#2563eb',
-                fillColor: '#2563eb',
-                fillOpacity: 0.2
-            });
-            layerGroup.addLayer(poly);
-        } else if (item.type === 'circle') {
-            const circle = L.circle([item.center.lat, item.center.lng], {
-                radius: item.radiusMeters,
-                color: '#2563eb',
-                fillColor: '#2563eb',
-                fillOpacity: 0.2
-            });
-            layerGroup.addLayer(circle);
-        }
-    });
+    const item = items[0]; // ONLY take the first one
+
+    if (item.type === 'polygon') {
+        const latlngs = item.points.map(p => [p.lat, p.lng]);
+        const poly = L.polygon(latlngs, {
+            color: '#2563eb',
+            fillColor: '#2563eb',
+            fillOpacity: 0.2
+        });
+        layerGroup.addLayer(poly);
+    } else if (item.type === 'circle') {
+        const circle = L.circle([item.center.lat, item.center.lng], {
+            radius: item.radiusMeters,
+            color: '#2563eb',
+            fillColor: '#2563eb',
+            fillOpacity: 0.2
+        });
+        layerGroup.addLayer(circle);
+    }
 
     if (layerGroup.getLayers().length > 0) {
         map.fitBounds(layerGroup.getBounds());
