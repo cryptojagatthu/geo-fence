@@ -62,8 +62,6 @@ export function setupFenceControls(map) {
             console.log('Circle Draw Enabled');
         });
     }
-
-    }
 }
 
 export function getFenceLayer() {
