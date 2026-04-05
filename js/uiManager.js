@@ -240,6 +240,20 @@ export function updateDeviceUI(anyOutside, devices) {
     const countEl = document.getElementById('active-device-count');
     if (countEl) countEl.textContent = devices.length;
 
+    const deviceListEl = document.getElementById('device-list');
+    if (deviceListEl) {
+        if (devices.length === 0) {
+            deviceListEl.innerHTML = '';
+        } else {
+            deviceListEl.innerHTML = devices.map(d => `
+                <div class="device-item" style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 5px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 0.75rem;">
+                    <span><i class="fa-solid fa-cow" style="color: ${d.status === 'OUTSIDE' ? '#dc2626' : '#16a34a'}"></i> ${d.deviceId}</span>
+                    <button class="btn btn-secondary btn-xs" onclick="window.zoomToDevice('${d.deviceId}')" title="Find on map"><i class="fa-solid fa-magnifying-glass-location"></i></button>
+                </div>
+            `).join('');
+        }
+    }
+
     const statusCard = document.getElementById('status-indicator');
     const statusText = document.getElementById('status-text');
     const alertBanner = document.getElementById('alert-banner');
