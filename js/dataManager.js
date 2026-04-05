@@ -222,7 +222,12 @@ export async function saveFenceToLibrary(name, layerGroup) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, data })
         });
-        if (!response.ok) throw new Error("Failed to save to library");
+        
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `Server returned ${response.status}`);
+        }
+        
         return await response.json();
     } catch (err) {
         console.error("Library save failed:", err);
