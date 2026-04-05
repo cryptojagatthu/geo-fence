@@ -4,7 +4,7 @@
  */
 
 import { map } from './mapManager.js';
-import { exportFence, importFence, exportFenceToESP32 } from './dataManager.js';
+import { exportFence, importFence, exportFenceToESP32, fetchSavedFences, saveFenceToLibrary, deleteFenceFromLibrary, loadFenceDataToMap, syncFenceToApi } from './dataManager.js';
 import { getFenceLayer } from './fenceLogic.js';
 
 let lastStatus = null;
@@ -114,30 +114,115 @@ export function setupUI() {
         });
     }
 
-    // --- Tracking Mode Toggle ---
-    const trackingToggle = document.getElementById('tracking-mode-toggle');
-    const iotInfo = document.getElementById('iot-device-info');
-    const simInfo = document.getElementById('simulation-info');
+    // --- Library Controls ---
+    const btnSaveLibrary = document.getElementById('btn-save-library');
+    if (btnSaveLibrary) {
+        btnSaveLibrary.addEventListener('click', async () => {
+            const fenceLayer = getFenceLayer();
+            if (!fenceLayer || fenceLayer.getLayers().length === 0) {
+                alert("Draw a fence first!");
+                return;
+            }
 
-    if (trackingToggle) {
-        trackingToggle.addEventListener('change', async (e) => {
-            const isIoT = e.target.checked;
-            const { setTrackingMode } = await import('./cowManager.js');
-            
-            if (isIoT) {
-                setTrackingMode('iot');
-                iotInfo.classList.remove('hidden');
-                simInfo.classList.add('hidden');
-            } else {
-                setTrackingMode('simulation');
-                iotInfo.classList.add('hidden');
-                simInfo.classList.remove('hidden');
+            const name = prompt("Enter a name for this boundary:", `Fence ${new Date().toLocaleDateString()}`);
+            if (!name) return;
+
+            try {
+                await saveFenceToLibrary(name, fenceLayer);
+                await refreshLibrary();
+            } catch (err) {
+                alert("Failed to save to library: " + err.message);
             }
         });
     }
 
-    // Initial fetch of alert history
+    // Initial fetch of alert history and library
     fetchAlertHistory();
+    refreshLibrary();
+}
+
+async function refreshLibrary() {
+    const fences = await fetchSavedFences();
+    renderLibrary(fences);
+}
+
+function renderLibrary(fences) {
+    const libraryList = document.getElementById('fence-library-list');
+    if (!libraryList) return;
+
+    if (fences.length === 0) {
+        libraryList.innerHTML = '<div style="color: #64748b; font-style: italic;">No saved fences.</div>';
+        return;
+    }
+
+    libraryList.innerHTML = fences.map(f => {
+        const dateStr = new Date(f.timestamp).toLocaleDateString();
+        return `
+            <div class="library-item" data-id="${f._id}">
+                <div class="library-item-header">
+                    <span class="library-item-name" title="Click to load to map">${f.name}</span>
+                    <span class="library-item-date">${dateStr}</span>
+                </div>
+                <div class="library-item-actions">
+                    <button class="btn btn-secondary btn-xs btn-load" title="Restore to map"><i class="fa-solid fa-folder-open"></i> Load</button>
+                    <button class="btn btn-success btn-xs btn-sync-item" title="Sync this version to cloud"><i class="fa-solid fa-cloud-arrow-up"></i> Sync</button>
+                    <button class="btn btn-danger btn-xs btn-delete-item" title="Delete from library"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Event Delegation for library actions
+    libraryList.querySelectorAll('.library-item').forEach(item => {
+        const id = item.dataset.id;
+        const fence = fences.find(f => f._id === id);
+
+        item.querySelector('.library-item-name').addEventListener('click', () => {
+            loadFenceDataToMap(fence.data, map, getFenceLayer());
+        });
+
+        item.querySelector('.btn-load').addEventListener('click', () => {
+            loadFenceDataToMap(fence.data, map, getFenceLayer());
+        });
+
+        item.querySelector('.btn-sync-item').addEventListener('click', async (e) => {
+            const btn = e.currentTarget;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+            btn.disabled = true;
+
+            try {
+                // To sync from library, we temporarily load it to a dummy layer group or just send the data object
+                const response = await fetch('/api/geofence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(fence.data)
+                });
+                if (!response.ok) throw new Error("Sync failed");
+                btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                btn.classList.replace('btn-success', 'btn-primary');
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.replace('btn-primary', 'btn-success');
+                    btn.disabled = false;
+                }, 2000);
+            } catch (err) {
+                alert("Sync failed: " + err.message);
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        });
+
+        item.querySelector('.btn-delete-item').addEventListener('click', async () => {
+            if (!confirm(`Delete "${fence.name}"?`)) return;
+            try {
+                await deleteFenceFromLibrary(id);
+                await refreshLibrary();
+            } catch (err) {
+                alert("Delete failed: " + err.message);
+            }
+        });
+    });
 }
 
 /**

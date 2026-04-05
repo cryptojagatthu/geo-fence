@@ -70,6 +70,7 @@
                     <button id="btn-export-firmware" class="btn btn-primary"
                         title="Export for ESP32 Firmware (C++ Format)"><i class="fa-solid fa-microchip"></i> Export
                         Firmware</button>
+                    <button id="btn-save-library" class="btn btn-outline" title="Save to Local Library"><i class="fa-solid fa-bookmark"></i> Save to Library</button>
                     <button id="btn-import" class="btn btn-outline"><i class="fa-solid fa-upload"></i> Import</button>
                     <input type="file" id="file-import" accept=".json" style="display: none;">
                 </div>
@@ -95,30 +96,22 @@
                 </div>
             </div>
 
-            <!-- Tracking Mode & IoT Device Info -->
+            <!-- IoT Device Info & Alert History -->
             <div class="control-group">
-                <h3><i class="fa-solid fa-satellite-dish"></i> Tracking Mode</h3>
-                <div class="toggle-switch">
-                    <span>Manual Simulation</span>
-                    <label class="switch">
-                        <input type="checkbox" id="tracking-mode-toggle">
-                        <span class="slider round"></span>
-                    </label>
-                    <span>IoT Live</span>
-                </div>
-
-                <div id="iot-device-info" class="mt-2 hidden">
-                    <div id="device-count" style="font-size: 0.9rem; font-weight: 500;">
-                        Active Devices: <span id="active-device-count" style="color: #0284c7;">0</span>
-                    </div>
-                </div>
-
-                <div id="simulation-info" class="mt-2 text-muted" style="font-size: 0.8rem; font-style: italic;">
-                    Simulation Mode: Drag cow marker manually to test fence.
+                <h3><i class="fa-solid fa-satellite-dish"></i> IoT Devices</h3>
+                <div id="device-count" style="font-size: 0.9rem; margin-bottom: 10px; font-weight: 500;">
+                    Active Devices: <span id="active-device-count" style="color: #0284c7;">0</span>
                 </div>
             </div>
 
             <div class="control-group" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;">
+                <h3 style="margin-bottom: 8px;"><i class="fa-solid fa-bookmark"></i> Fence Library</h3>
+                <div id="fence-library-list" style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 5px;">
+                    <div style="color: #64748b; font-style: italic;">No saved fences.</div>
+                </div>
+            </div>
+
+            <div class="control-group" style="display: flex; flex-direction: column; overflow: hidden; max-height: 250px;">
                 <h3 style="margin-bottom: 8px;"><i class="fa-solid fa-bell"></i> Alert History</h3>
                 <div id="alert-history-list" style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 5px;">
                     <div style="color: #64748b; font-style: italic;">No alerts yet.</div>

@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 // Models
 const DeviceData = require('./models/DeviceData');
 const Alert = require('./models/Alert');
+const SavedFence = require('./models/SavedFence');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -196,6 +197,58 @@ app.get('/api/alerts', async (req, res) => {
         res.json(alerts);
     } catch (err) {
         console.error("Error fetching alerts:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// ---------------------------------------------------------------------------
+// SAVED FENCES LIBRARY APIs
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/saved-fences
+ * List all saved fences in the library.
+ */
+app.get('/api/saved-fences', async (req, res) => {
+    try {
+        const savedFences = await SavedFence.find().sort({ timestamp: -1 });
+        res.json(savedFences);
+    } catch (err) {
+        console.error("Error fetching saved fences:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+/**
+ * POST /api/saved-fences
+ * Save a new fence to the library.
+ */
+app.post('/api/saved-fences', async (req, res) => {
+    try {
+        const { name, data } = req.body;
+        if (!name || !data) {
+            return res.status(400).json({ error: "Name and data are required" });
+        }
+        const newFence = new SavedFence({ name, data });
+        await newFence.save();
+        res.status(201).json(newFence);
+    } catch (err) {
+        console.error("Error saving fence to library:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+/**
+ * DELETE /api/saved-fences/:id
+ * Delete a fence from the library.
+ */
+app.delete('/api/saved-fences/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await SavedFence.findByIdAndDelete(id);
+        res.json({ message: "Fence deleted from library" });
+    } catch (err) {
+        console.error("Error deleting saved fence:", err);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });

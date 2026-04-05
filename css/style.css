@@ -275,70 +275,13 @@ body {
     color: #cbd5e1;
 }
 
-/* Switch (Toggle) */
+/* Switch */
 .toggle-switch {
     display: flex;
     align-items: center;
     justify-content: space-between;
     font-size: 0.875rem;
     margin-bottom: 0.5rem;
-    gap: 10px;
-}
-
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 20px;
-  flex-shrink: 0;
-}
-
-.switch input { 
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #cbd5e1;
-  transition: .4s;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 14px;
-  width: 14px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: .4s;
-}
-
-input:checked + .slider {
-  background-color: var(--primary-color);
-}
-
-input:focus + .slider {
-  box-shadow: 0 0 1px var(--primary-color);
-}
-
-input:checked + .slider:before {
-  transform: translateX(20px);
-}
-
-.slider.round {
-  border-radius: 34px;
-}
-
-.slider.round:before {
-  border-radius: 50%;
 }
 
 /* Map Area */
@@ -399,6 +342,61 @@ input:checked + .slider:before {
         transform: translate(-50%, 0);
         opacity: 1;
     }
+}
+
+/* Fence Library List */
+#fence-library-list {
+    margin-top: 5px;
+}
+
+.library-item {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-md);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.library-item:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.library-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.library-item-name {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.library-item-name:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+.library-item-date {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.library-item-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-xs {
+    padding: 3px 8px;
+    font-size: 0.7rem;
+    border-radius: 4px;
 }
 
 /* Responsive */

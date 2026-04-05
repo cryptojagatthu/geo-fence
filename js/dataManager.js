@@ -192,3 +192,92 @@ export function importFence(file, map, layerGroup) {
     };
     reader.readAsText(file);
 }
+
+// --- Library Functions ---
+
+/**
+ * Fetch all saved fences from the database.
+ */
+export async function fetchSavedFences() {
+    try {
+        const response = await fetch('/api/saved-fences');
+        if (!response.ok) throw new Error("Failed to fetch library");
+        return await response.json();
+    } catch (err) {
+        console.error("Library fetch failed:", err);
+        return [];
+    }
+}
+
+/**
+ * Save current fence to the library.
+ */
+export async function saveFenceToLibrary(name, layerGroup) {
+    const data = exportFenceToESP32(layerGroup);
+    if (!data) return null;
+
+    try {
+        const response = await fetch('/api/saved-fences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, data })
+        });
+        if (!response.ok) throw new Error("Failed to save to library");
+        return await response.json();
+    } catch (err) {
+        console.error("Library save failed:", err);
+        throw err;
+    }
+}
+
+/**
+ * Delete a fence from the library.
+ */
+export async function deleteFenceFromLibrary(id) {
+    try {
+        const response = await fetch(`/api/saved-fences/${id}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error("Failed to delete from library");
+        return await response.json();
+    } catch (err) {
+        console.error("Library delete failed:", err);
+        throw err;
+    }
+}
+
+/**
+ * Restore a fence from the library onto the map.
+ * This takes the simplified ESP32 format and reconstructs Leaflet layers.
+ */
+export function loadFenceDataToMap(data, map, layerGroup) {
+    if (!data) return;
+
+    layerGroup.clearLayers();
+
+    const items = Array.isArray(data) ? data : [data];
+
+    items.forEach(item => {
+        if (item.type === 'polygon') {
+            const latlngs = item.points.map(p => [p.lat, p.lng]);
+            const poly = L.polygon(latlngs, {
+                color: '#2563eb',
+                fillColor: '#2563eb',
+                fillOpacity: 0.2
+            });
+            layerGroup.addLayer(poly);
+        } else if (item.type === 'circle') {
+            const circle = L.circle([item.center.lat, item.center.lng], {
+                radius: item.radiusMeters,
+                color: '#2563eb',
+                fillColor: '#2563eb',
+                fillOpacity: 0.2
+            });
+            layerGroup.addLayer(circle);
+        }
+    });
+
+    if (layerGroup.getLayers().length > 0) {
+        map.fitBounds(layerGroup.getBounds());
+    }
+}
