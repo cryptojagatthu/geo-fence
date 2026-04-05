@@ -90,9 +90,11 @@ app.post('/api/device-data', async (req, res) => {
     try {
         const { deviceId, lat, lng, status, battery } = req.body;
 
-        if (!deviceId || lat == null || lng == null || !status || battery == null) {
-            return res.status(400).json({ error: "Missing required fields" });
+        if (!deviceId || lat == null || lng == null || !status) {
+            return res.status(400).json({ error: "Missing required fields (deviceId, lat, lng, status)" });
         }
+
+        const batteryLevel = battery != null ? battery : 100; // Default to 100 if missing
 
         // Save location data
         const deviceData = new DeviceData({
@@ -100,7 +102,7 @@ app.post('/api/device-data', async (req, res) => {
             lat,
             lng,
             status,
-            battery
+            battery: batteryLevel
         });
         await deviceData.save();
 
