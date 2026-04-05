@@ -10,7 +10,11 @@ let deviceMarkers = {};
 let pollInterval;
 const POLL_INTERVAL_MS = 3000;
 let mapInstance;
-let firstDetection = true; // Auto-focus on first device found
+let isAutoTracking = false;
+
+export function setAutoTracking(value) {
+    isAutoTracking = value;
+}
 
 export function setupCow(map) {
     mapInstance = map;
@@ -59,11 +63,10 @@ async function fetchLatestDevices() {
             }
         });
 
-        // Auto-focus logic: If this is the first time we see devices, zoom to them
-        if (firstDetection && devices.length > 0) {
-            const group = new L.featureGroup(Object.values(deviceMarkers));
-            mapInstance.fitBounds(group.getBounds().pad(0.5));
-            firstDetection = false;
+        // Auto-track: Center on the first device if enabled
+        if (isAutoTracking && devices.length > 0) {
+            const firstDevice = devices[0];
+            mapInstance.panTo([firstDevice.lat, firstDevice.lng]);
         }
 
         // Update overall UI status based on if ANY device is outside
@@ -122,19 +125,6 @@ function updateMarkerVisuals(marker, device) {
         marker.bindPopup(generatePopupContent(device));
     }
 }
-
-/**
- * Global helper to zoom to a specific device
- */
-window.zoomToDevice = (id) => {
-    const marker = deviceMarkers[id];
-    if (marker) {
-        mapInstance.setView(marker.getLatLng(), 18);
-        marker.openPopup();
-    } else {
-        console.warn(`Marker for ${id} not found.`);
-    }
-};
 
 function generatePopupContent(device) {
     const { deviceId, status, battery, timestamp, lat, lng } = device;
