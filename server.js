@@ -42,17 +42,6 @@ if (!fs.existsSync(DATA_FILE)) {
 // OLD GEOFENCE APIs (Used by Simulator to set/get global fence)
 // ---------------------------------------------------------------------------
 
-/**
- * GET /api/geofence
- * Returns the current geo-fence configuration for ESP32.
- */
-app.get('/api/geofence', (req, res) => {
-    try {
-        const data = fs.readFileSync(DATA_FILE, 'utf8');
-        res.setHeader('Content-Type', 'application/json');
-        res.send(data);
-    } catch (err) {
-        console.error("Error reading geofence data:", err);
 // -------- Geofence API (Active Configuration) --------
 
 app.get('/api/geofence', async (req, res) => {
